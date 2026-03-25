@@ -1,0 +1,16 @@
+{
+  "name": "construction-planner",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run --workspaces build",
+    "dev": "npm run --workspaces dev",
+    "lint": "npm run --workspaces lint",
+    "typecheck": "npm --workspace @construction-planner/shared run build && npm run --workspaces typecheck",
+    "test": "npm run --workspaces test"
+  }
+}
