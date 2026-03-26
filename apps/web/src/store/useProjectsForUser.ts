@@ -1,6 +1,6 @@
 import { useCallback, useSyncExternalStore } from "react";
 import type { Project } from "@construction-planner/shared/types";
-import { projectRepository } from "@/entities/repositories/projectRepository";
+import { projectRepository } from "@/features/projects/data/project.repository";
 
 const EMPTY: Project[] = [];
 

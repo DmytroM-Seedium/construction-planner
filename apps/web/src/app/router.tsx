@@ -1,6 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AppErrorBoundary } from "@/app/AppErrorBoundary";
-import { SyncBootstrap } from "@/processes/sync/SyncBootstrap";
+import { SyncBootstrap } from "@/core/infrastructure/sync/SyncBootstrap";
 import { ErrorPage } from "@/pages/error/ErrorPage";
 import { HomePage } from "@/pages/home/HomePage";
 import { ProjectsPage } from "@/pages/projects/ProjectsPage";

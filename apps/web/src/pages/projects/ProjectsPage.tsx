@@ -1,11 +1,4 @@
-import {
-  ChangeEvent,
-  MouseEvent,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { ChangeEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type {
   ChecklistItem,
@@ -18,17 +11,18 @@ import {
   validatePlanImage,
 } from "@/features/project-image/validatePlanImage";
 import { deriveTaskStatus } from "@/features/tasks/deriveTaskStatus";
-import { TaskModal } from "@/widgets/task-modal/TaskModal";
-import { SyncStatusBadge } from "@/widgets/sync-status/SyncStatusBadge";
+import { TaskModal } from "@/features/tasks/components/TaskModal";
+import { SyncStatusBadge } from "@/core/infrastructure/sync/components/SyncStatusBadge";
 import { useUiStore } from "@/shared/uiStore";
-import { useTaskStore } from "@/store/useTaskStore";
+import { useAuthStore } from "@/features/auth/store/auth.store";
 import { useProjectsForUser } from "@/store/useProjectsForUser";
-import { useTasksForProject } from "@/store/useTasksForProject";
-import { useChecklistItemsForTasks } from "@/store/useChecklistItemsForTasks";
-import { projectRepository } from "@/entities/repositories/projectRepository";
-import { taskRepository } from "@/entities/repositories/taskRepository";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useTasksForProject } from "@/features/tasks/hooks/useTasksForProject";
+import { useChecklistItemsForTasks } from "@/features/tasks/hooks/useChecklistItemsForTasks";
+import { projectRepository } from "@/features/projects/data/project.repository";
+import { taskRepository } from "@/features/tasks/data/task.repository";
+import { PlanCanvas } from "@/features/plan/components/PlanCanvas";
+import { Button } from "@/shared/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -36,21 +30,21 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
+} from "@/shared/ui/dialog";
+import { Field, FieldDescription, FieldLabel } from "@/shared/ui/field";
+import { Input } from "@/shared/ui/input";
+import { ScrollArea } from "@/shared/ui/scroll-area";
+import { Separator } from "@/shared/ui/separator";
 import { Trash2 } from "lucide-react";
-import { STATUS_UI } from "@/widgets/task-modal/checklistItemFormFields";
+import { STATUS_UI } from "@/features/tasks/components/checklistItemFormFields";
 
 export const ProjectsPage = () => {
   const navigate = useNavigate();
   const [persistHydrated, setPersistHydrated] = useState(() =>
-    useTaskStore.persist.hasHydrated(),
+    useAuthStore.persist.hasHydrated(),
   );
-  const userId = useTaskStore((s) => s.userId);
-  const clearSession = useTaskStore((s) => s.clearSession);
+  const userId = useAuthStore((s) => s.userId);
+  const clearSession = useAuthStore((s) => s.clearSession);
   const {
     selectedProjectId,
     setSelectedProjectId,
@@ -100,7 +94,7 @@ export const ProjectsPage = () => {
 
   useEffect(() => {
     if (persistHydrated) return;
-    return useTaskStore.persist.onFinishHydration(() =>
+    return useAuthStore.persist.onFinishHydration(() =>
       setPersistHydrated(true),
     );
   }, [persistHydrated]);
@@ -224,20 +218,6 @@ export const ProjectsPage = () => {
       }
     }
     setDeleteDialog(null);
-  };
-
-  const onRightClickPlan = (event: MouseEvent) => {
-    event.preventDefault();
-    const rect = (
-      event.currentTarget as HTMLDivElement
-    ).getBoundingClientRect();
-    const x = Number(
-      (((event.clientX - rect.left) / rect.width) * 100).toFixed(2),
-    );
-    const y = Number(
-      (((event.clientY - rect.top) / rect.height) * 100).toFixed(2),
-    );
-    openTaskModal("create", { x, y });
   };
 
   const pinBgClass: Record<TaskStatus, string> = {
@@ -403,57 +383,17 @@ export const ProjectsPage = () => {
             )}
 
             {selectedProject && imageUrl && (
-              <div className="rounded-md border bg-background p-2">
-                <div
-                  className="relative mx-auto w-full"
-                  onContextMenu={onRightClickPlan}
-                >
-                  <img
-                    src={imageUrl}
-                    alt="Plan"
-                    className="max-h-[72vh] w-full rounded object-contain"
-                  />
-
-                  {tasks.map((task) => {
-                    const status = taskStatusById[task.id] ?? "NO_STARTED";
-                    return (
-                      <button
-                        key={task.id}
-                        type="button"
-                        className="absolute -translate-x-1/2 -translate-y-1/2"
-                        style={{ left: `${task.x}%`, top: `${task.y}%` }}
-                        title={`${task.title}`}
-                        onClick={() => onOpenTask(task.id)}
-                      >
-                        <span
-                          className={[
-                            "grid h-7 w-7 place-items-center rounded-full shadow-sm ring-2 ring-background",
-                            pinBgClass[status],
-                          ].join(" ")}
-                        >
-                          <span className="h-2.5 w-2.5 rounded-full bg-black/20" />
-                        </span>
-                      </button>
-                    );
-                  })}
-
-                  {taskModalOpen &&
-                    taskModalMode === "create" &&
-                    contextPosition && (
-                      <div
-                        className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2"
-                        style={{
-                          left: `${contextPosition.x}%`,
-                          top: `${contextPosition.y}%`,
-                        }}
-                      >
-                        <span className="grid h-7 w-7 place-items-center rounded-full bg-slate-900/80 shadow-sm ring-2 ring-background">
-                          <span className="h-2.5 w-2.5 rounded-full bg-white/70" />
-                        </span>
-                      </div>
-                    )}
-                </div>
-              </div>
+              <PlanCanvas
+                imageUrl={imageUrl}
+                tasks={tasks}
+                taskStatusById={taskStatusById}
+                pinBgClass={pinBgClass}
+                onOpenTask={onOpenTask}
+                onRightClickCreateAt={(pos) => openTaskModal("create", pos)}
+                previewPin={
+                  taskModalOpen && taskModalMode === "create" ? contextPosition : null
+                }
+              />
             )}
           </CardContent>
         </Card>

@@ -2,15 +2,13 @@ import { nanoid } from "nanoid";
 import type { AuthResponse } from "@construction-planner/shared/types";
 import { api } from "@/shared/http";
 import { authUserToRecord } from "@/features/auth/mapAuthUser";
-import { userRepository } from "@/entities/repositories/userRepository";
-import { useTaskStore } from "@/store/useTaskStore";
+import { userRepository } from "@/features/users/data/user.repository";
+import { useAuthStore } from "@/features/auth/store/auth.store";
 
 export const loginByName = async (name: string): Promise<AuthResponse> => {
   try {
     const response = await api.post<AuthResponse>("/auth/login", { name });
-    useTaskStore
-      .getState()
-      .setSession(response.token, response.user.id, response.user.name);
+    useAuthStore.getState().setSession(response.token, response.user.id, response.user.name);
     await userRepository.upsertUser(authUserToRecord(response.user));
     return response;
   } catch (error) {
@@ -37,11 +35,11 @@ export const loginByName = async (name: string): Promise<AuthResponse> => {
         isDeleted: false,
       };
       await userRepository.upsertUser(localUser);
-      useTaskStore.getState().setSession("", localUser.id, localUser.name);
+      useAuthStore.getState().setSession("", localUser.id, localUser.name);
       return { token: "", user: localUser };
     }
 
-    useTaskStore.getState().setSession("", existing.id, existing.name);
+    useAuthStore.getState().setSession("", existing.id, existing.name);
     return {
       token: "",
       user: existing,

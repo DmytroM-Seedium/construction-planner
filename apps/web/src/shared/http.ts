@@ -1,8 +1,9 @@
-import { useTaskStore } from "@/store/useTaskStore";
+import { useAuthStore } from "@/features/auth/store/auth.store";
+import { env } from "@/shared/config/env";
 
-const API_URL = "http://localhost:4000";
+const API_URL = env.apiBaseUrl;
 
-const getToken = () => useTaskStore.getState().token;
+const getToken = () => useAuthStore.getState().token;
 
 export class HttpError extends Error {
   readonly status: number;

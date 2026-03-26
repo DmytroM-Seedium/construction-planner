@@ -1,11 +1,11 @@
-import { requestSync } from "@/processes/sync/syncEngine";
+import { requestSync } from "@/core/infrastructure/sync/syncEngine";
 import { api } from "@/shared/http";
-import { getDatabase } from "@/services/databaseService";
+import { getDbClient } from "@/core/infrastructure/db-client";
 import type { Project } from "@construction-planner/shared/types";
 
 export const projectImageService = {
   async saveAttachment(projectId: string, file: File) {
-    const db = await getDatabase();
+    const db = await getDbClient();
     const doc = await db.projects.findOne(projectId).exec();
     if (!doc) throw new Error("Project not found");
 
@@ -24,7 +24,7 @@ export const projectImageService = {
     requestSync();
   },
   async removePlanAttachment(projectId: string): Promise<void> {
-    const db = await getDatabase();
+    const db = await getDbClient();
     const doc = await db.projects.findOne(projectId).exec();
     if (!doc) return;
     const attachment = doc.getAttachment("plan-image");
@@ -38,7 +38,7 @@ export const projectImageService = {
     requestSync();
   },
   async getAttachmentBlobUrl(projectId: string): Promise<string | null> {
-    const db = await getDatabase();
+    const db = await getDbClient();
     const doc = await db.projects.findOne(projectId).exec();
     if (!doc) return null;
     const project = doc.toMutableJSON() as Project;
@@ -51,7 +51,7 @@ export const projectImageService = {
     userId: string,
     projectId: string,
   ): Promise<string | null> {
-    const db = await getDatabase();
+    const db = await getDbClient();
     const doc = await db.projects.findOne(projectId).exec();
     if (!doc) return null;
     const project = doc.toMutableJSON() as Project;
@@ -68,7 +68,7 @@ export const projectImageService = {
     });
   },
   async uploadPendingFromLocal(projectId: string): Promise<boolean> {
-    const db = await getDatabase();
+    const db = await getDbClient();
     const doc = await db.projects.findOne(projectId).exec();
     if (!doc) return false;
 
