@@ -14,11 +14,20 @@
   },
   "dependencies": {
     "@construction-planner/shared": "0.1.0",
+    "@radix-ui/react-accordion": "^1.2.12",
+    "@radix-ui/react-dialog": "^1.1.15",
+    "@radix-ui/react-scroll-area": "^1.2.10",
+    "@radix-ui/react-separator": "^1.1.8",
+    "@radix-ui/react-slot": "^1.2.4",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.6.0",
     "nanoid": "^5.1.5",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-router-dom": "^7.9.1",
     "rxdb": "^16.20.0",
+    "tailwind-merge": "^3.5.0",
     "zustand": "^5.0.8"
   },
   "devDependencies": {

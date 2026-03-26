@@ -8,7 +8,8 @@ const LEGACY_USER_ID = "cp_user_id";
 type TaskStore = {
   token: string | null;
   userId: string | null;
-  setSession: (token: string, userId: string) => void;
+  userName: string | null;
+  setSession: (token: string, userId: string, userName: string | null) => void;
   clearSession: () => void;
   taskRepository: typeof taskRepository;
 };
@@ -26,8 +27,8 @@ const legacyAwareStorage: Storage = {
     const legacyUserId = localStorage.getItem(LEGACY_USER_ID);
     if (legacyToken && legacyUserId) {
       return JSON.stringify({
-        state: { token: legacyToken, userId: legacyUserId },
-        version: 0
+        state: { token: legacyToken, userId: legacyUserId, userName: null },
+        version: 0,
       });
     }
     return null;
@@ -37,7 +38,9 @@ const legacyAwareStorage: Storage = {
   setItem: (key: string, value: string) => {
     localStorage.setItem(key, value);
     try {
-      const parsed = JSON.parse(value) as { state?: { token?: string | null; userId?: string | null } };
+      const parsed = JSON.parse(value) as {
+        state?: { token?: string | null; userId?: string | null };
+      };
       const t = parsed.state?.token;
       const u = parsed.state?.userId;
       if (t && u) {
@@ -45,9 +48,12 @@ const legacyAwareStorage: Storage = {
         localStorage.setItem(LEGACY_USER_ID, u);
       }
     } catch {
-      /* ignore */
+      console.error(
+        "Failed to parse JSON in legacyAwareStorage",
+        value.slice(0, 100),
+      );
     }
-  }
+  },
 };
 
 export const useTaskStore = create<TaskStore>()(
@@ -55,21 +61,23 @@ export const useTaskStore = create<TaskStore>()(
     (set) => ({
       token: null,
       userId: null,
+      userName: null,
       taskRepository,
-      setSession: (token, userId) => set({ token, userId }),
+      setSession: (token, userId, userName) => set({ token, userId, userName }),
       clearSession: () => {
         localStorage.removeItem(LEGACY_TOKEN);
         localStorage.removeItem(LEGACY_USER_ID);
-        set({ token: null, userId: null });
-      }
+        set({ token: null, userId: null, userName: null });
+      },
     }),
     {
       name: "cp-task-store",
       storage: createJSONStorage(() => legacyAwareStorage),
       partialize: (state) => ({
         token: state.token,
-        userId: state.userId
-      })
-    }
-  )
+        userId: state.userId,
+        userName: state.userName,
+      }),
+    },
+  ),
 );

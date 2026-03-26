@@ -1,9 +1,10 @@
 import { nanoid } from "nanoid";
 import type { RxQuery } from "rxdb";
 import type { Task } from "@construction-planner/shared/types";
+import { requestSync } from "@/processes/sync/syncEngine";
 import { getDatabase } from "@/services/databaseService";
 import { createDefaultChecklistTemplates } from "@/features/checklist/checklistFactory";
-import { localRepository } from "@/entities/repositories/localRepository";
+import { checklistRepository } from "@/entities/repositories/checklistRepository";
 
 const now = () => Date.now();
 
@@ -36,6 +37,7 @@ export class TaskRepository {
   async upsertTask(task: Task): Promise<void> {
     const db = await getDatabase();
     await db.tasks.upsert(task);
+    requestSync();
   }
 
   async createTask(
@@ -51,7 +53,7 @@ export class TaskRepository {
     };
     await this.upsertTask(task);
     for (const template of createDefaultChecklistTemplates()) {
-      await localRepository.createChecklistItem({
+      await checklistRepository.createChecklistItem({
         userId: data.userId,
         taskId: task.id,
         title: template.title,
@@ -59,6 +61,20 @@ export class TaskRepository {
       });
     }
     return task;
+  }
+
+  async softDeleteTask(userId: string, taskId: string): Promise<void> {
+    await checklistRepository.softDeleteChecklistItemsForTask(userId, taskId);
+    const db = await getDatabase();
+    const doc = await db.tasks.findOne(taskId).exec();
+    if (!doc) return;
+    const task = doc.toMutableJSON() as Task;
+    if (task.userId !== userId) return;
+    await this.upsertTask({
+      ...task,
+      isDeleted: true,
+      updatedAt: now(),
+    });
   }
 
   /**

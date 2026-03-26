@@ -1,12 +1,3 @@
-import { LEGACY_CHECKLIST_STATUS_TO_TASK_STATUS } from "@construction-planner/shared/schemas";
-
-// const migrateChecklistItemsToV1 = (oldDoc: Record<string, unknown>) => {
-//   const raw = oldDoc.status;
-//   const s = typeof raw === "string" ? raw : "";
-//   const next = LEGACY_CHECKLIST_STATUS_TO_TASK_STATUS[s] ?? raw;
-//   return { ...oldDoc, status: next };
-// };
-
 export const collectionSchemas = {
   users: {
     schema: {
@@ -23,7 +14,6 @@ export const collectionSchemas = {
         isDeleted: { type: "boolean" },
       },
       required: ["id", "userId", "name", "createdAt", "updatedAt", "isDeleted"],
-      attachments: {},
     },
   },
   projects: {
@@ -41,6 +31,7 @@ export const collectionSchemas = {
         isDeleted: { type: "boolean" },
         hasImage: { type: "boolean" },
         imageUpdatedAt: { type: "number" },
+        imageSyncedAt: { type: "number" },
       },
       required: [
         "id",
@@ -50,6 +41,7 @@ export const collectionSchemas = {
         "updatedAt",
         "isDeleted",
         "hasImage",
+        "imageSyncedAt",
       ],
       attachments: {},
     },
@@ -82,7 +74,6 @@ export const collectionSchemas = {
         "updatedAt",
         "isDeleted",
       ],
-      attachments: {},
     },
   },
   checklistItems: {
@@ -111,10 +102,6 @@ export const collectionSchemas = {
         "updatedAt",
         "isDeleted",
       ],
-      attachments: {},
     },
-    // migrationStrategies: {
-    // 1: migrateChecklistItemsToV1,
-    // },
   },
 } as const;

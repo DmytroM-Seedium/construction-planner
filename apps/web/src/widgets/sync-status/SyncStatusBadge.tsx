@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useSyncStatusStore } from "@/store/useSyncStatusStore";
 
 export const SyncStatusBadge = () => {
-  const { isSyncing, lastSuccessAt, lastError } = useSyncStatusStore();
+  const { isSyncing, lastSuccessAt, lastError, serverReachable } = useSyncStatusStore();
   const [online, setOnline] = useState(() => navigator.onLine);
 
   useEffect(() => {
@@ -16,7 +16,7 @@ export const SyncStatusBadge = () => {
     };
   }, []);
 
-  if (!online) {
+  if (!online || serverReachable === false) {
     return (
       <span className="rounded bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-900">Offline</span>
     );

@@ -1,29 +1,50 @@
-import type { AuthResponse, User } from "@construction-planner/shared/types";
+import { nanoid } from "nanoid";
+import type { AuthResponse } from "@construction-planner/shared/types";
 import { api } from "@/shared/http";
-import { localRepository } from "@/entities/repositories/localRepository";
+import { authUserToRecord } from "@/features/auth/mapAuthUser";
+import { userRepository } from "@/entities/repositories/userRepository";
 import { useTaskStore } from "@/store/useTaskStore";
-
-/** RxDB only allows schema fields — API may send extras (e.g. `_id`). */
-const toUserRecord = (raw: AuthResponse["user"]): User => ({
-  id: raw.id,
-  userId: raw.userId,
-  name: raw.name,
-  createdAt: raw.createdAt,
-  updatedAt: raw.updatedAt,
-  isDeleted: raw.isDeleted,
-});
 
 export const loginByName = async (name: string): Promise<AuthResponse> => {
   try {
     const response = await api.post<AuthResponse>("/auth/login", { name });
-    console.log("response", response);
-    useTaskStore.getState().setSession(response.token, response.user.id);
-    console.log("set in session store");
-    await localRepository.upsertUser(toUserRecord(response.user));
-    console.log("upserted user");
+    useTaskStore
+      .getState()
+      .setSession(response.token, response.user.id, response.user.name);
+    await userRepository.upsertUser(authUserToRecord(response.user));
     return response;
   } catch (error) {
-    console.error("Error logging in:", error);
-    throw error;
+    const isNetworkError =
+      error instanceof TypeError ||
+      (error instanceof Error &&
+        /failed to fetch|networkerror|load failed/i.test(error.message));
+
+    if (!isNetworkError) throw error;
+
+    // Offline fallback: if this user already exists in RxDB,
+    // allow navigation without requiring a server-issued JWT.
+    const normalizedName = name.trim();
+    const existing = await userRepository.findByName(normalizedName);
+    if (!existing) {
+      const ts = Date.now();
+      const id = nanoid();
+      const localUser = {
+        id,
+        userId: id,
+        name: normalizedName,
+        createdAt: ts,
+        updatedAt: ts,
+        isDeleted: false,
+      };
+      await userRepository.upsertUser(localUser);
+      useTaskStore.getState().setSession("", localUser.id, localUser.name);
+      return { token: "", user: localUser };
+    }
+
+    useTaskStore.getState().setSession("", existing.id, existing.name);
+    return {
+      token: "",
+      user: existing,
+    };
   }
 };

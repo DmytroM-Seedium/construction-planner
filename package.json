@@ -7,7 +7,7 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run --workspaces build",
+    "build": "npm run build -w @construction-planner/shared && npm run build -w @construction-planner/server && npm run build -w @construction-planner/web",
     "dev": "npm run --workspaces dev",
     "lint": "npm run --workspaces lint",
     "typecheck": "npm --workspace @construction-planner/shared run build && npm run --workspaces typecheck",
