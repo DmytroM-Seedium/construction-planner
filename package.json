@@ -8,7 +8,10 @@
   ],
   "scripts": {
     "build": "npm run build -w @construction-planner/shared && npm run build -w @construction-planner/server && npm run build -w @construction-planner/web",
-    "dev": "npm run --workspaces dev",
+    "dev": "node ./scripts/dev-terminals.mjs",
+    "dev:web": "npm -w @construction-planner/web run dev",
+    "dev:server": "npm -w @construction-planner/server run dev",
+    "dev:all": "npm run --workspaces dev",
     "lint": "npm run --workspaces lint",
     "typecheck": "npm --workspace @construction-planner/shared run build && npm run --workspaces typecheck",
     "test": "npm run --workspaces test"

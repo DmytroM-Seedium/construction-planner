@@ -1,6 +1,7 @@
 import type { ChecklistItem } from "@construction-planner/shared/types";
 import { nanoid } from "nanoid";
 import type { RxQuery } from "rxdb";
+import { toPlain } from "@/lib/rxDocPlain";
 import { requestSync } from "@/processes/sync/syncEngine";
 import { getDatabase } from "@/services/databaseService";
 
@@ -32,6 +33,15 @@ const byTaskKey = (userId: string, taskId: string) => `${userId}:${taskId}`;
 const byTasksKey = (userId: string, taskIds: string[]) =>
   `${userId}:${[...taskIds].sort().join(",")}`;
 
+function trimNonEmpty(value: string): string | null {
+  const t = value.trim();
+  return t.length > 0 ? t : null;
+}
+
+function trimDescription(value: string | undefined): string {
+  return (value ?? "").trim();
+}
+
 export class ChecklistRepository {
   private readonly checklistByTaskCache = new Map<string, ChecklistItem[]>();
   private readonly checklistByTasksCache = new Map<string, ChecklistItem[]>();
@@ -39,8 +49,17 @@ export class ChecklistRepository {
   private static readonly EMPTY: ChecklistItem[] = [];
 
   async upsertChecklistItem(item: ChecklistItem): Promise<void> {
+    const title = trimNonEmpty(item.title);
+    const description = trimDescription(item.description);
+    if (!title) {
+      console.warn(
+        "checklistRepository.upsertChecklistItem: skipped empty title",
+        item.id,
+      );
+      return;
+    }
     const db = await getDatabase();
-    await db.checklistItems.upsert(item);
+    await db.checklistItems.upsert({ ...item, title, description });
     requestSync();
   }
 
@@ -68,9 +87,16 @@ export class ChecklistRepository {
   async createChecklistItem(
     data: Omit<ChecklistItem, "id" | "createdAt" | "updatedAt" | "isDeleted">,
   ): Promise<ChecklistItem> {
+    const title = trimNonEmpty(data.title);
+    const description = trimDescription(data.description);
+    if (!title) {
+      throw new Error("Checklist item name must be non-empty");
+    }
     const timestamp = now();
     const item: ChecklistItem = {
       ...data,
+      title,
+      description,
       id: nanoid(),
       createdAt: timestamp,
       updatedAt: timestamp,
@@ -113,7 +139,8 @@ export class ChecklistRepository {
     checklistItemsByTaskQuery(userId, taskId).then((query) => {
       if (cancelled) return;
       const sub = query.$.subscribe((result) => {
-        const items = (result ?? []) as ChecklistItem[];
+        const docs: unknown[] = Array.isArray(result) ? (result as unknown[]) : [];
+        const items = docs.map((d) => toPlain<ChecklistItem>(d));
         this.checklistByTaskCache.set(key, items);
         listener(items);
       });
@@ -143,7 +170,8 @@ export class ChecklistRepository {
     checklistItemsByTasksQuery(userId, taskIds).then((query) => {
       if (cancelled) return;
       const sub = query.$.subscribe((result) => {
-        const items = (result ?? []) as ChecklistItem[];
+        const docs: unknown[] = Array.isArray(result) ? (result as unknown[]) : [];
+        const items = docs.map((d) => toPlain<ChecklistItem>(d));
         this.checklistByTasksCache.set(key, items);
         listener(items);
       });

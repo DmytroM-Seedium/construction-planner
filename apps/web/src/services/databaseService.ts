@@ -46,8 +46,9 @@ export const getDatabase = async (): Promise<RxDatabase<DbCollections>> => {
 
     databasePromise = create().catch(async (error: unknown) => {
       const message = error instanceof Error ? error.message : String(error);
-      const code = (error as any)?.code as string | undefined;
-      if (code === "DB6" || message.includes("DB6")) {
+      const code = (error as { code?: unknown } | null)?.code;
+      const codeString = typeof code === "string" ? code : undefined;
+      if (codeString === "DB6" || message.includes("DB6")) {
         await removeRxDatabase(name, storage);
         return create();
       }

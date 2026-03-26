@@ -28,11 +28,13 @@ export const buildApp = () => {
     prefix: "/uploads/",
   });
 
-  app.decorate("authenticate", async (request: any, reply: any) => {
+  app.decorate("authenticate", async (request: unknown, reply: unknown) => {
     try {
-      await request.jwtVerify();
+      await (request as { jwtVerify: () => Promise<unknown> }).jwtVerify();
     } catch {
-      reply.status(401).send({ message: "Unauthorized" });
+      (reply as { status: (code: number) => { send: (body: unknown) => unknown } })
+        .status(401)
+        .send({ message: "Unauthorized" });
     }
   });
 

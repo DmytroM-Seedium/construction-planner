@@ -1,9 +1,10 @@
 import { nanoid } from "nanoid";
 import type { RxQuery } from "rxdb";
 import type { Task } from "@construction-planner/shared/types";
+import { toPlain } from "@/lib/rxDocPlain";
 import { requestSync } from "@/processes/sync/syncEngine";
 import { getDatabase } from "@/services/databaseService";
-import { createDefaultChecklistTemplates } from "@/features/checklist/checklistFactory";
+import { createDefaultChecklistTemplates } from "@/shared/constants/defaultChecklistTemplates";
 import { checklistRepository } from "@/entities/repositories/checklistRepository";
 
 const now = () => Date.now();
@@ -26,6 +27,11 @@ const tasksQuery = async (
 const cacheKey = (userId: string, projectId: string) =>
   `${userId}:${projectId}`;
 
+function trimNonEmpty(value: string): string | null {
+  const t = value.trim();
+  return t.length > 0 ? t : null;
+}
+
 export class TaskRepository {
   private readonly taskListCache = new Map<string, Task[]>();
   private static readonly EMPTY: Task[] = [];
@@ -35,17 +41,30 @@ export class TaskRepository {
   }
 
   async upsertTask(task: Task): Promise<void> {
+    const title = trimNonEmpty(task.title);
+    const description = trimNonEmpty(task.description);
+    if (!title || !description) {
+      console.warn("taskRepository.upsertTask: skipped empty title or description", task.id);
+      return;
+    }
     const db = await getDatabase();
-    await db.tasks.upsert(task);
+    await db.tasks.upsert({ ...task, title, description });
     requestSync();
   }
 
   async createTask(
     data: Omit<Task, "id" | "createdAt" | "updatedAt" | "isDeleted">,
   ): Promise<Task> {
+    const title = trimNonEmpty(data.title);
+    const description = trimNonEmpty(data.description);
+    if (!title || !description) {
+      throw new Error("Task title and description must be non-empty");
+    }
     const timestamp = now();
     const task: Task = {
       ...data,
+      title,
+      description,
       id: nanoid(),
       createdAt: timestamp,
       updatedAt: timestamp,
@@ -57,6 +76,7 @@ export class TaskRepository {
         userId: data.userId,
         taskId: task.id,
         title: template.title,
+        description: template.description,
         status: template.status,
       });
     }
@@ -93,7 +113,8 @@ export class TaskRepository {
     tasksQuery(userId, projectId).then((query) => {
       if (cancelled) return;
       const sub = query.$.subscribe((result) => {
-        const tasks = (result ?? []) as Task[];
+        const docs: unknown[] = Array.isArray(result) ? (result as unknown[]) : [];
+        const tasks = docs.map((d) => toPlain<Task>(d));
         this.taskListCache.set(key, tasks);
         listener(tasks);
       });

@@ -10,6 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 
 export const HomePage = () => {
@@ -49,16 +50,17 @@ export const HomePage = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Name</label>
+            <Field>
+              <FieldLabel htmlFor="login-name">Name</FieldLabel>
               <Input
+                id="login-name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. Alex"
                 required
                 disabled={isSubmitting}
               />
-            </div>
+            </Field>
 
             {error && (
               <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
@@ -67,7 +69,7 @@ export const HomePage = () => {
             )}
 
             <Button
-              className="w-full"
+              className="w-full py-5"
               type="submit"
               disabled={isSubmitting}
               aria-busy={isSubmitting}

@@ -57,7 +57,10 @@ export const registerProjectRoutes = (fastify: FastifyInstance): void => {
       const buffer = await file.toBuffer();
       await fs.writeFile(targetPath, buffer);
 
-      const field = (file as any)?.fields?.imageUpdatedAt;
+      const fields = (file as unknown as {
+        fields?: Record<string, { value?: unknown }>;
+      }).fields;
+      const field = fields?.imageUpdatedAt;
       const rawImageUpdatedAt =
         typeof field?.value === "string" ? Number(field.value) : undefined;
       const imageUpdatedAt =
@@ -65,7 +68,8 @@ export const registerProjectRoutes = (fastify: FastifyInstance): void => {
           ? rawImageUpdatedAt
           : Date.now();
 
-      const authUserId = (request as any)?.user?.userId as string | undefined;
+      const authUserIdRaw = (request as unknown as { user?: { userId?: unknown } }).user?.userId;
+      const authUserId = typeof authUserIdRaw === "string" ? authUserIdRaw : undefined;
       const existing = await fastify.repos.projects.findById(projectId);
       const baseNow = Date.now();
 

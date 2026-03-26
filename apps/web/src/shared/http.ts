@@ -38,10 +38,10 @@ export const api = {
     if (!response.ok) throw new HttpError(response.status);
     return response.json() as Promise<T>;
   },
-  async upload(
+  async upload<T = unknown>(
     path: string,
     args: { file: File; fields?: Record<string, string | number | boolean | null | undefined> },
-  ): Promise<unknown> {
+  ): Promise<T> {
     const token = getToken();
     const formData = new FormData();
     formData.append("file", args.file);
@@ -57,6 +57,6 @@ export const api = {
       body: formData
     });
     if (!response.ok) throw new HttpError(response.status, `Upload failed: ${response.status}`);
-    return response.json();
+    return response.json() as Promise<T>;
   }
 };

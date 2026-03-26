@@ -1,6 +1,7 @@
 import { requestSync } from "@/processes/sync/syncEngine";
 import { api } from "@/shared/http";
 import { getDatabase } from "@/services/databaseService";
+import type { Project } from "@construction-planner/shared/types";
 
 export const projectImageService = {
   async saveAttachment(projectId: string, file: File) {
@@ -40,6 +41,21 @@ export const projectImageService = {
     const db = await getDatabase();
     const doc = await db.projects.findOne(projectId).exec();
     if (!doc) return null;
+    const project = doc.toMutableJSON() as Project;
+    return projectImageService.getAttachmentBlobUrlForUser(
+      project.userId,
+      projectId,
+    );
+  },
+  async getAttachmentBlobUrlForUser(
+    userId: string,
+    projectId: string,
+  ): Promise<string | null> {
+    const db = await getDatabase();
+    const doc = await db.projects.findOne(projectId).exec();
+    if (!doc) return null;
+    const project = doc.toMutableJSON() as Project;
+    if (project.userId !== userId) return null;
     const attachment = doc.getAttachment("plan-image");
     if (!attachment) return null;
     const blob = await attachment.getData();
@@ -56,7 +72,7 @@ export const projectImageService = {
     const doc = await db.projects.findOne(projectId).exec();
     if (!doc) return false;
 
-    const project = doc.toMutableJSON() as any;
+    const project = doc.toMutableJSON() as Project;
     const imageUpdatedAt: number | undefined =
       typeof project.imageUpdatedAt === "number" ? project.imageUpdatedAt : undefined;
     const imageSyncedAt: number =
@@ -69,14 +85,19 @@ export const projectImageService = {
     if (!attachment) return false;
 
     const blob = await attachment.getData();
+    const attachmentTypeRaw = (attachment as unknown as { type?: unknown }).type;
+    const attachmentType = typeof attachmentTypeRaw === "string" ? attachmentTypeRaw : undefined;
     const file = new File([blob], "plan-image", {
-      type: blob.type || (attachment as any).type || "image/png",
+      type: blob.type || attachmentType || "image/png",
     });
 
-    const response = (await api.upload(`/projects/${projectId}/plan-image`, {
+    const response = await api.upload<{ imageSyncedAt?: number }>(
+      `/projects/${projectId}/plan-image`,
+      {
       file,
       fields: { imageUpdatedAt },
-    })) as any;
+      },
+    );
 
     const nextSyncedAt =
       typeof response?.imageSyncedAt === "number" ? response.imageSyncedAt : imageUpdatedAt;

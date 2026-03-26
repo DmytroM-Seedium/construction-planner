@@ -10,6 +10,7 @@ type UiState = {
   setSelectedTaskId: (id: string | null) => void;
   openTaskModal: (mode: "create" | "edit", position?: { x: number; y: number }) => void;
   closeTaskModal: () => void;
+  reset: () => void;
 };
 
 export const useUiStore = create<UiState>((set) => ({
@@ -21,5 +22,13 @@ export const useUiStore = create<UiState>((set) => ({
   setSelectedProjectId: (id) => set({ selectedProjectId: id }),
   setSelectedTaskId: (id) => set({ selectedTaskId: id }),
   openTaskModal: (mode, position) => set({ taskModalOpen: true, taskModalMode: mode, contextPosition: position ?? null }),
-  closeTaskModal: () => set({ taskModalOpen: false })
+  closeTaskModal: () => set({ taskModalOpen: false }),
+  reset: () =>
+    set({
+      selectedProjectId: null,
+      selectedTaskId: null,
+      taskModalOpen: false,
+      taskModalMode: "create",
+      contextPosition: null,
+    }),
 }));

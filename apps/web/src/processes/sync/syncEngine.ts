@@ -1,4 +1,7 @@
-import { LEGACY_CHECKLIST_STATUS_TO_TASK_STATUS } from "@construction-planner/shared/schemas";
+import {
+  LEGACY_CHECKLIST_STATUS_TO_TASK_STATUS,
+  LEGACY_SYNC_PLACEHOLDER,
+} from "@construction-planner/shared/schemas";
 import type { AuthResponse, ChecklistItem, Project, SyncPullResponse, SyncPushBody, Task, TaskStatus, User } from "@construction-planner/shared/types";
 import { authUserToRecord } from "@/features/auth/mapAuthUser";
 import { userRepository } from "@/entities/repositories/userRepository";
@@ -39,12 +42,26 @@ const collectPushPayload = async (userId: string, lastPushAt: number): Promise<S
   return { users, projects, tasks, checklistItems, lastPushAt };
 };
 
+const normalizePulledTask = (doc: Task): Task => {
+  let title = doc.title?.trim() ?? "";
+  let description = doc.description?.trim() ?? "";
+  if (!title) title = LEGACY_SYNC_PLACEHOLDER;
+  if (!description) description = LEGACY_SYNC_PLACEHOLDER;
+  if (title === doc.title && description === doc.description) return doc;
+  return { ...doc, title, description };
+};
+
 const normalizeChecklistItem = (doc: ChecklistItem): ChecklistItem => {
   const raw = doc.status as string;
   const mapped = LEGACY_CHECKLIST_STATUS_TO_TASK_STATUS[raw];
-  const next: TaskStatus = (mapped ?? raw) as TaskStatus;
-  if (next === doc.status) return doc;
-  return { ...doc, status: next };
+  const nextStatus: TaskStatus = (mapped ?? raw) as TaskStatus;
+  let title = doc.title?.trim() ?? "";
+  const description = doc.description?.trim() ?? "";
+  if (!title) title = LEGACY_SYNC_PLACEHOLDER;
+  const statusChanged = nextStatus !== doc.status;
+  const stringsChanged = title !== doc.title || description !== doc.description;
+  if (!statusChanged && !stringsChanged) return doc;
+  return { ...doc, status: nextStatus, title, description };
 };
 
 const mergePulledData = async (payload: SyncPullResponse) => {
@@ -52,7 +69,11 @@ const mergePulledData = async (payload: SyncPullResponse) => {
 
   await lwwMerge<User>(payload.users, (doc) => db.users.upsert(doc), (id) => db.users.findOne(id).exec());
   await lwwMerge<Project>(payload.projects, (doc) => db.projects.upsert(doc), (id) => db.projects.findOne(id).exec());
-  await lwwMerge<Task>(payload.tasks, (doc) => db.tasks.upsert(doc), (id) => db.tasks.findOne(id).exec());
+  await lwwMerge<Task>(
+    payload.tasks.map(normalizePulledTask),
+    (doc) => db.tasks.upsert(doc),
+    (id) => db.tasks.findOne(id).exec(),
+  );
   await lwwMerge<ChecklistItem>(
     payload.checklistItems.map(normalizeChecklistItem),
     (doc) => db.checklistItems.upsert(doc),
@@ -125,7 +146,7 @@ const uploadPendingPlanImages = async (userId: string): Promise<void> => {
     .exec();
 
   for (const doc of docs) {
-    const project = doc.toMutableJSON() as any;
+    const project = doc.toMutableJSON() as Project;
     const imageUpdatedAt: number | undefined =
       typeof project.imageUpdatedAt === "number" ? project.imageUpdatedAt : undefined;
     const imageSyncedAt: number =
